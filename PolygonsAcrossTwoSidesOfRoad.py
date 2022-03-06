@@ -80,11 +80,13 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
     global lettersVar
     global oppositeLettersVar
     global widthVar
+    global deliveryGoingBackwards
     houseFrontsFromStartVar = houseFrontsFromStart
     oppositeHouseFrontsFromStartVar = oppositeHouseFrontsFromStart
     lettersVar = letters
     oppositeLettersVar = oppositeLetters
     widthVar = width
+    deliveryGoingBackwards = False  #To deal with special case as start, where the postman may be delivering to houses behing the carts position instead of ahead of the cart position.
 
     #Set the overall distance to zero. This variable below is what the function will return at the very end.
     totalDistance = 0
@@ -152,18 +154,21 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
         totalDistance = totalDistance + sqrt((min(oppositeLamPosts)**2)+(widthVar**2))
         postmanOnOppositeSideOfRoad = True
         oppositeLamPosts.remove(min(oppositeLamPosts))
+        
 
 
     #If the first lampost is not at the starting position, then we may need to traverse back, since there may be houses between the starting position and the first lampost.
     if position != 0:
+        deliveryGoingBackwards = True
         totalDistance = totalDistance + CheckForHousesNeedingDeliveryBetweenTwoPoints(0, position)
-
 
     
     #Now moving forwards:
         
     #This loop will only end once we have reached the end of the street.
     while True:
+        
+        deliveryGoingBackwards = False
 
         #Remove any lamposts that are at the same position as the cart, or behind. We only want to have lampposts in the lamppost lists that are ahead of the current carts position.
         if bool(lamPosts) and bool(oppositeLamPosts):
@@ -181,7 +186,7 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
                     break
 
 
-        if bool(lamPosts) and bool(oppositeLamPosts) == False:
+        elif bool(lamPosts) and bool(oppositeLamPosts) == False:
             while True:
                 if position >= min(lamPosts):
                     lamPosts.remove(min(lamPosts))
@@ -194,7 +199,7 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
                     break
 
 
-        if bool(lamPosts) == False and bool(oppositeLamPosts):
+        elif bool(lamPosts) == False and bool(oppositeLamPosts):
             while True:
                 if position >= min(oppositeLamPosts):
                     oppositeLamPosts.remove(min(oppositeLamPosts))
@@ -207,7 +212,7 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
                     break
 
         #If no further lampposts exist, then we only need to check for any houses needing delivery between the end of the street and the current position.
-        if bool(lamPosts) == False and bool(oppositeLamPosts) == False:
+        else:
             currentlyAtEndOfStreet = True
 
 
@@ -250,7 +255,7 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
                     postmanOnOppositeSideOfRoad = True
 
 
-        if bool(lamPosts) and bool(oppositeLamPosts) == False:
+        elif bool(lamPosts) and bool(oppositeLamPosts) == False:
             if postmanOnOppositeSideOfRoad:
                 nextLampost = min(lamPosts)
                 totalDistance = totalDistance + CheckForHousesNeedingDeliveryBetweenTwoPoints(position, nextLampost)
@@ -266,7 +271,7 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
                 postmanOnOppositeSideOfRoad = False
 
 
-        if bool(lamPosts) == False and bool(oppositeLamPosts):
+        elif bool(lamPosts) == False and bool(oppositeLamPosts):
             if postmanOnOppositeSideOfRoad:
                 nextLampost = min(oppositeLamPosts)
                 totalDistance = totalDistance + CheckForHousesNeedingDeliveryBetweenTwoPoints(position, nextLampost)
@@ -280,6 +285,8 @@ def PolygonsAcrossTwoSidesOfRoad(lamPosts, oppositeLamPosts, houseFrontsFromStar
                 position = nextLampost
                 postmanOnOppositeSideOfRoad = True
 
+        else:
+            continue
 
 
     return totalDistance
@@ -432,63 +439,120 @@ def CheckForHousesNeedingDeliveryBetweenTwoPoints(Point1, Point2):
 def Deliver(FirstStreetSide, OppositeStreetSide):
     deliveryDistance = 0
 
-    if bool(FirstStreetSide) and bool(OppositeStreetSide):
-
-        if postmanOnOppositeSideOfRoad:
-            #Calculate the final diagonal back, as well as the distance between the lampost and the first house that needs delivering to.
-            lastDiagonalDistanceTravelledByPostman = sqrt(((position - max(FirstStreetSide))**2) + (widthVar**2))
-            deliveryDistance = deliveryDistance + lastDiagonalDistanceTravelledByPostman + (position - max(OppositeStreetSide))
-
-        else:
-            lastDiagonalDistanceTravelledByPostman = sqrt(((position - max(OppositeStreetSide))**2) + (widthVar**2))
-            deliveryDistance = deliveryDistance + lastDiagonalDistanceTravelledByPostman + (position - max(FirstStreetSide))
-
-
-        lengthTravelledOnFirstStreetSide = max(FirstStreetSide) - min(FirstStreetSide)
-        lengthTravelledOnOppositeStreetSide = max(OppositeStreetSide) - min(OppositeStreetSide)
-        deliveryDistance = deliveryDistance + lengthTravelledOnFirstStreetSide + lengthTravelledOnOppositeStreetSide
-
-
-        #Now calculate the distance between the minimum element of the opposite street side (effectively one of the verticys of the 'polygon'), and the minimum element of the first street side (another verticy of the 'polygon'). This calculates one of the lengths of this 'polygon'.
-        #We will then add this to the delivery distance
-        if min(OppositeStreetSide) > min(FirstStreetSide):
-            baseLength = min(OppositeStreetSide) - min(FirstStreetSide)
-
-        else:
-            baseLength = min(FirstStreetSide) - min(OppositeStreetSide)
-
-        firstDiagonalDistanceTravelledByPostman = sqrt((baseLength**2)+(widthVar**2))
-        deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman
-
-
-
-    if bool(FirstStreetSide) and bool(OppositeStreetSide) == False:
-        if postmanOnOppositeSideOfRoad:
-            firstDiagonalDistanceTravelledByPostman = sqrt(((position - max(FirstStreetSide))**2) + (widthVar**2))
+    if deliveryGoingBackwards == False:
+        
+        if bool(FirstStreetSide) and bool(OppositeStreetSide):
+    
+            if postmanOnOppositeSideOfRoad:
+                #Calculate the final diagonal back, as well as the distance between the lampost and the first house that needs delivering to.
+                lastDiagonalDistanceTravelledByPostman = sqrt(((min(FirstStreetSide) - position)**2) + (widthVar**2))
+                deliveryDistance = deliveryDistance + lastDiagonalDistanceTravelledByPostman + (min(OppositeStreetSide) - position)
+    
+            else:
+                lastDiagonalDistanceTravelledByPostman = sqrt(((min(OppositeStreetSide) - position)**2) + (widthVar**2))
+                deliveryDistance = deliveryDistance + lastDiagonalDistanceTravelledByPostman + (min(FirstStreetSide) - position)
+    
+    
             lengthTravelledOnFirstStreetSide = max(FirstStreetSide) - min(FirstStreetSide)
-            lastDiagonalDistanceTravelledByPostman = sqrt(((position - min(FirstStreetSide))**2) + (widthVar**2))
+            lengthTravelledOnOppositeStreetSide = max(OppositeStreetSide) - min(OppositeStreetSide)
+            deliveryDistance = deliveryDistance + lengthTravelledOnFirstStreetSide + lengthTravelledOnOppositeStreetSide
+    
+    
+            #Now calculate the distance between the minimum element of the opposite street side (effectively one of the verticys of the 'polygon'), and the minimum element of the first street side (another verticy of the 'polygon'). This calculates one of the lengths of this 'polygon'.
+            #We will then add this to the delivery distance
+            if max(OppositeStreetSide) > max(FirstStreetSide):
+                baseLength = max(OppositeStreetSide) - max(FirstStreetSide)
+    
+            else:
+                baseLength = max(FirstStreetSide) - max(OppositeStreetSide)
+    
+            firstDiagonalDistanceTravelledByPostman = sqrt((baseLength**2)+(widthVar**2))
+            deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman
+    
+    
+    
+        if bool(FirstStreetSide) and bool(OppositeStreetSide) == False:
+            if postmanOnOppositeSideOfRoad:
+                firstDiagonalDistanceTravelledByPostman = sqrt(((min(FirstStreetSide) - position)**2) + (widthVar**2))
+                lengthTravelledOnFirstStreetSide = max(FirstStreetSide) - min(FirstStreetSide)
+                lastDiagonalDistanceTravelledByPostman = sqrt(((max(FirstStreetSide) - position)**2) + (widthVar**2))
+    
+            else:
+                firstDiagonalDistanceTravelledByPostman = 0
+                lengthTravelledOnFirstStreetSide = (max(FirstStreetSide) - position) * 2
+                lastDiagonalDistanceTravelledByPostman = 0
+    
+            deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman + lengthTravelledOnFirstStreetSide + lastDiagonalDistanceTravelledByPostman
+    
+        if bool(FirstStreetSide) == False and bool(OppositeStreetSide):
+            if postmanOnOppositeSideOfRoad:
+                firstDiagonalDistanceTravelledByPostman = 0
+                lengthTravelledOnFirstStreetSide = (max(OppositeStreetSide) - position) * 2
+                lastDiagonalDistanceTravelledByPostman = 0
+    
+            else:
+                firstDiagonalDistanceTravelledByPostman = sqrt(((min(OppositeStreetSide) - position)**2) + (widthVar**2))
+                lengthTravelledOnFirstStreetSide = max(OppositeStreetSide) - min(OppositeStreetSide)
+                lastDiagonalDistanceTravelledByPostman = sqrt(((max(OppositeStreetSide) - position)**2) + (widthVar**2))
+    
+            deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman + lengthTravelledOnFirstStreetSide + lastDiagonalDistanceTravelledByPostman
+    
+    else:
+        if bool(FirstStreetSide) and bool(OppositeStreetSide):
 
-        else:
-            firstDiagonalDistanceTravelledByPostman = 0
-            lengthTravelledOnFirstStreetSide = (position - min(FirstStreetSide)) * 2
-            lastDiagonalDistanceTravelledByPostman = 0
+            if postmanOnOppositeSideOfRoad:
+                #Calculate the final diagonal back, as well as the distance between the lampost and the first house that needs delivering to.
+                lastDiagonalDistanceTravelledByPostman = sqrt(((position - max(FirstStreetSide))**2) + (widthVar**2))
+                deliveryDistance = deliveryDistance + lastDiagonalDistanceTravelledByPostman + (position - max(OppositeStreetSide))
 
-        deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman + lengthTravelledOnFirstStreetSide + lastDiagonalDistanceTravelledByPostman
-
-    if bool(FirstStreetSide) == False and bool(OppositeStreetSide):
-        if postmanOnOppositeSideOfRoad:
-            firstDiagonalDistanceTravelledByPostman = 0
-            lengthTravelledOnFirstStreetSide = (position - min(OppositeStreetSide) * 2)
-            lastDiagonalDistanceTravelledByPostman = 0
-
-        else:
-            firstDiagonalDistanceTravelledByPostman = sqrt(((position - max(OppositeStreetSide))**2) + (widthVar**2))
-            lengthTravelledOnFirstStreetSide = max(OppositeStreetSide) - min(OppositeStreetSide)
-            lastDiagonalDistanceTravelledByPostman = sqrt(((position - min(OppositeStreetSide))**2) + (widthVar**2))
-
-        deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman + lengthTravelledOnFirstStreetSide + lastDiagonalDistanceTravelledByPostman
+            else:
+                lastDiagonalDistanceTravelledByPostman = sqrt(((position - max(OppositeStreetSide))**2) + (widthVar**2))
+                deliveryDistance = deliveryDistance + lastDiagonalDistanceTravelledByPostman + (position - max(FirstStreetSide))
 
 
+            lengthTravelledOnFirstStreetSide = max(FirstStreetSide) - min(FirstStreetSide)
+            lengthTravelledOnOppositeStreetSide = max(OppositeStreetSide) - min(OppositeStreetSide)
+            deliveryDistance = deliveryDistance + lengthTravelledOnFirstStreetSide + lengthTravelledOnOppositeStreetSide
+
+
+            #Now calculate the distance between the minimum element of the opposite street side (effectively one of the verticys of the 'polygon'), and the minimum element of the first street side (another verticy of the 'polygon'). This calculates one of the lengths of this 'polygon'.
+            #We will then add this to the delivery distance
+            if min(OppositeStreetSide) > min(FirstStreetSide):
+                baseLength = min(OppositeStreetSide) - min(FirstStreetSide)
+
+            else:
+                baseLength = min(FirstStreetSide) - min(OppositeStreetSide)
+
+            firstDiagonalDistanceTravelledByPostman = sqrt((baseLength**2)+(widthVar**2))
+            deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman
+
+
+
+        if bool(FirstStreetSide) and bool(OppositeStreetSide) == False:
+            if postmanOnOppositeSideOfRoad:
+                firstDiagonalDistanceTravelledByPostman = sqrt(((position - max(FirstStreetSide))**2) + (widthVar**2))
+                lengthTravelledOnFirstStreetSide = max(FirstStreetSide) - min(FirstStreetSide)
+                lastDiagonalDistanceTravelledByPostman = sqrt(((position - min(FirstStreetSide))**2) + (widthVar**2))
+
+            else:
+                firstDiagonalDistanceTravelledByPostman = 0
+                lengthTravelledOnFirstStreetSide = (position - min(FirstStreetSide)) * 2
+                lastDiagonalDistanceTravelledByPostman = 0
+
+            deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman + lengthTravelledOnFirstStreetSide + lastDiagonalDistanceTravelledByPostman
+
+        if bool(FirstStreetSide) == False and bool(OppositeStreetSide):
+            if postmanOnOppositeSideOfRoad:
+                firstDiagonalDistanceTravelledByPostman = 0
+                lengthTravelledOnFirstStreetSide = (position - min(OppositeStreetSide) * 2)
+                lastDiagonalDistanceTravelledByPostman = 0
+
+            else:
+                firstDiagonalDistanceTravelledByPostman = sqrt(((position - max(OppositeStreetSide))**2) + (widthVar**2))
+                lengthTravelledOnFirstStreetSide = max(OppositeStreetSide) - min(OppositeStreetSide)
+                lastDiagonalDistanceTravelledByPostman = sqrt(((position - min(OppositeStreetSide))**2) + (widthVar**2))
+
+            deliveryDistance = deliveryDistance + firstDiagonalDistanceTravelledByPostman + lengthTravelledOnFirstStreetSide + lastDiagonalDistanceTravelledByPostman
 
 
     return deliveryDistance
